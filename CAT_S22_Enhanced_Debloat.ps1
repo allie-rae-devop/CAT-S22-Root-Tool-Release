@@ -1,191 +1,227 @@
 # ============================================================================
-# CAT S22 ENHANCED DEBLOAT & APP INSTALLER
+# CAT S22 ENHANCED DEBLOAT & APP INSTALLER - STANDALONE
 # Remove bloatware + Install privacy-focused alternatives
+# Run this AFTER rooting with CAT_S22_Root_Tool.ps1
 # ============================================================================
 
-function Get-AlternativeApps {
-    $apps = @{
-        "F-Droid" = @{
-            Name = "F-Droid App Store"
-            Description = "Open-source app store (install first!)"
-            URL = "https://f-droid.org/F-Droid.apk"
-            Essential = $true
-        }
-        
-        "Aurora Store" = @{
-            Name = "Aurora Store"
-            Description = "Anonymous Google Play Store client"
-            URL = "https://gitlab.com/AuroraOSS/AuroraStore/-/releases/permalink/latest/downloads/binaries/AuroraStore.apk"
-            FDroid = "com.aurora.store"
-        }
-        
-        "Simple Keyboard" = @{
-            Name = "Simple Keyboard"
-            Description = "Lightweight keyboard with T9 support"
-            FDroid = "rkr.simplekeyboard.inputmethod"
-        }
-        
-        "Traditional T9" = @{
-            Name = "Traditional T9"
-            Description = "Classic T9 predictive text"
-            FDroid = "io.github.sspanak.tt9"
-            Recommended = $true
-        }
-        
-        "Simple SMS Messenger" = @{
-            Name = "Simple SMS Messenger"
-            Description = "Clean, ad-free SMS app"
-            FDroid = "com.simplemobiletools.smsmessenger"
-        }
-        
-        "Fossify Contacts" = @{
-            Name = "Fossify Contacts"
-            Description = "Privacy-focused contacts app"
-            FDroid = "org.fossify.contacts"
-        }
-        
-        "Fossify Phone" = @{
-            Name = "Fossify Phone"
-            Description = "Privacy-focused dialer"
-            FDroid = "org.fossify.phone"
-        }
-        
-        "Fossify Gallery" = @{
-            Name = "Fossify Gallery"
-            Description = "Privacy-focused photo gallery"
-            FDroid = "org.fossify.gallery"
-        }
-        
-        "Simple File Manager" = @{
-            Name = "Simple File Manager"
-            Description = "Clean file browser"
-            FDroid = "com.simplemobiletools.filemanager.pro"
-        }
-        
-        "K-9 Mail" = @{
-            Name = "K-9 Mail"
-            Description = "Open-source email client (works with Proton Bridge)"
-            FDroid = "com.fsck.k9"
-        }
-        
-        "Organic Maps" = @{
-            Name = "Organic Maps"
-            Description = "Offline maps (OpenStreetMap)"
-            FDroid = "app.organicmaps"
-        }
-        
-        "NewPipe" = @{
-            Name = "NewPipe"
-            Description = "YouTube without Google (no ads, background play)"
-            FDroid = "org.schabi.newpipe"
-            Recommended = $true
-        }
-        
-        "Aegis Authenticator" = @{
-            Name = "Aegis Authenticator"
-            Description = "2FA authenticator"
-            FDroid = "com.beemdevelopment.aegis"
-        }
-        
-        "Bitwarden" = @{
-            Name = "Bitwarden"
-            Description = "Open-source password manager"
-            URL = "https://vault.bitwarden.com/download/?app=mobile&platform=android"
-        }
-        
-        "ProtonMail" = @{
-            Name = "Proton Mail"
-            Description = "Encrypted email (requires APK from Proton)"
-            URL = "https://protonapps.com/protonmail-android"
-        }
-        
-        "ProtonVPN" = @{
-            Name = "Proton VPN"
-            Description = "Encrypted VPN"
-            URL = "https://protonapps.com/protonvpn-android"
-        }
+#Requires -Version 5.1
+
+# Load required assemblies
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# Find ADB executable
+$Script:AdbPath = $null
+$possiblePaths = @(
+    "C:\Users\allie\CAT_S22_Root\tools\platform-tools\adb.exe",
+    "$PSScriptRoot\..\CAT_S22_Root\tools\platform-tools\adb.exe",
+    "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe",
+    "adb.exe"  # Try PATH as fallback
+)
+
+foreach ($path in $possiblePaths) {
+    if (Test-Path $path -ErrorAction SilentlyContinue) {
+        $Script:AdbPath = $path
+        break
     }
-    
-    return $apps
 }
 
-function Show-AppInstallerWizard {
-    Add-Type -AssemblyName System.Windows.Forms
-    Add-Type -AssemblyName System.Drawing
+if (-not $Script:AdbPath) {
+    # Try to find in PATH
+    try {
+        $null = & adb version 2>&1
+        $Script:AdbPath = "adb"
+    }
+    catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "ADB not found!`n`nPlease run CAT_S22_Root_Tool.ps1 first to set up ADB, or ensure platform-tools is in your PATH.",
+            "ADB Not Found",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        ) | Out-Null
+        exit
+    }
+}
+
+Write-Host "Using ADB: $Script:AdbPath" -ForegroundColor Cyan
+
+# Helper function: Write colored log messages
+function Write-ColorLog {
+    param(
+        [string]$Message,
+        [ValidateSet("INFO","SUCCESS","WARNING","ERROR")]
+        [string]$Level = "INFO"
+    )
+    
+    $color = switch ($Level) {
+        "INFO"    { "Cyan" }
+        "SUCCESS" { "Green" }
+        "WARNING" { "Yellow" }
+        "ERROR"   { "Red" }
+    }
+    
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Write-Host "[$timestamp] [$Level] $Message" -ForegroundColor $color
+}
+
+# Helper function: Show user prompt dialog
+function Show-Prompt {
+    param(
+        [string]$Title,
+        [string]$Message
+    )
+    
+    $result = [System.Windows.Forms.MessageBox]::Show(
+        $Message,
+        $Title,
+        [System.Windows.Forms.MessageBoxButtons]::OKCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+    
+    return ($result -eq [System.Windows.Forms.DialogResult]::OK)
+}
+
+# Check ADB connection
+function Test-ADB {
+    try {
+        $devices = & $Script:AdbPath devices 2>&1 | Out-String
+        Write-ColorLog "ADB devices output: $devices" -Level INFO
+        
+        # Check if any device is connected (not just authorized)
+        if ($devices -match "\t(device|unauthorized)") {
+            if ($devices -match "unauthorized") {
+                Write-ColorLog "Device connected but unauthorized - please authorize on phone" -Level WARNING
+                return $true  # Device is there, just not authorized yet
+            }
+            return $true
+        }
+        
+        return $false
+    }
+    catch {
+        Write-ColorLog "ADB check failed: $_" -Level ERROR
+        return $false
+    }
+}
+
+# Get debloat categories with package lists
+function Get-DebloatCategories {
+    return @{
+        "T-Mobile/Sprint Bloat" = @(
+            "com.tmobile.pr.adapt",
+            "com.tmobile.echolocate",
+            "com.tmobile.pr.mytmobile",
+            "com.tmobile.tmoplay",
+            "com.tmobile.tuesdays",
+            "com.tmobile.services.nameid",
+            "com.tmobile.appselector",
+            "com.sprint.zone",
+            "com.sprint.dsa",
+            "com.Sprint.ce.updater",
+            "com.nuance.xt9.input",           # T-Mobile keyboard
+            "com.asurion.android.vms",        # Visual Voicemail
+            "com.sec.vsim.ericssonnsds.webapp" # T-Mobile TDC
+        )
+        
+        "Google Apps - Core Removal" = @(
+            "com.google.android.googlequicksearchbox",  # Google Search/Assistant
+            "com.google.android.apps.searchlite",       # Google Go
+            "com.android.chrome",                       # Chrome
+            "com.google.android.apps.messaging",        # Google Messages
+            "com.google.android.dialer",                # Google Phone
+            "com.google.android.contacts",              # Google Contacts
+            "com.google.android.apps.photos",           # Google Photos
+            "com.google.android.apps.docs",             # Google Drive
+            "com.google.android.youtube",               # YouTube
+            "com.google.android.apps.youtube.music",    # YouTube Music
+            "com.google.android.gm",                    # Gmail
+            "com.google.android.calendar",              # Google Calendar
+            "com.google.android.apps.tachyon",          # Google Duo
+            "com.google.android.keep",                  # Google Keep
+            "com.google.android.apps.wellbeing",        # Digital Wellbeing
+            "com.google.ar.lens",                       # Google Lens
+            "com.google.android.marvin.talkback",       # Talkback
+            "com.google.android.tts",                   # Google TTS
+            "com.google.android.apps.turbo",            # Device Health Services
+            "com.google.android.partnersetup",          # Google Partner Setup
+            "com.google.android.printservice.recommendation", # Print service
+            "com.google.android.feedback",              # Google Feedback
+            "com.google.mainline.telemetry"            # Google Telemetry
+        )
+        
+        "Google Apps - Keep Essentials" = @(
+            "com.google.android.apps.searchlite",       # Google Go
+            "com.android.chrome",                       # Chrome
+            "com.google.android.apps.messaging",        # Messages (will replace)
+            "com.google.android.dialer",                # Phone (will replace)
+            "com.google.android.apps.photos",           # Photos (will replace)
+            "com.google.android.youtube",               # YouTube (will replace with NewPipe)
+            "com.google.android.apps.youtube.music",    # YouTube Music
+            "com.google.android.gm",                    # Gmail (will replace with K-9)
+            "com.google.android.keep"                   # Keep Notes
+        )
+        
+        "System Bloat" = @(
+            "com.facebook.system",
+            "com.facebook.appmanager",
+            "com.facebook.services",
+            "com.facebook.katana",
+            "com.android.vending.billing.InAppBillingService.COIN", # Google billing
+            "com.google.android.apps.walletnfcrel"      # Google Wallet
+        )
+    }
+}
+
+# Show category selection dialog
+function Show-CategoryDialog {
+    $categories = Get-DebloatCategories
     
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Install Alternative Apps"
-    $form.Size = New-Object System.Drawing.Size(700, 600)
+    $form.Text = "Select Bloatware to Remove"
+    $form.Size = New-Object System.Drawing.Size(500, 400)
     $form.StartPosition = "CenterScreen"
     
     $label = New-Object System.Windows.Forms.Label
     $label.Location = New-Object System.Drawing.Point(10, 10)
-    $label.Size = New-Object System.Drawing.Size(680, 60)
-    $label.Text = "Select alternative apps to install:`n(F-Droid will be installed first, then apps from F-Droid, then direct APKs)"
+    $label.Size = New-Object System.Drawing.Size(480, 30)
+    $label.Text = "Select categories of bloatware to remove:"
     $form.Controls.Add($label)
     
-    # Scrollable panel
-    $panel = New-Object System.Windows.Forms.Panel
-    $panel.Location = New-Object System.Drawing.Point(10, 80)
-    $panel.Size = New-Object System.Drawing.Size(660, 440)
-    $panel.AutoScroll = $true
-    $form.Controls.Add($panel)
-    
-    $apps = Get-AlternativeApps
     $checkboxes = @{}
-    $yPos = 10
+    $yPos = 50
     
-    foreach ($appKey in $apps.Keys | Sort-Object) {
-        $app = $apps[$appKey]
-        
+    foreach ($category in $categories.Keys) {
         $checkbox = New-Object System.Windows.Forms.CheckBox
-        $checkbox.Location = New-Object System.Drawing.Point(10, $yPos)
-        $checkbox.Size = New-Object System.Drawing.Size(630, 50)
-        
-        $text = "$($app.Name)"
-        if ($app.Recommended) { $text = "⭐ $text" }
-        if ($app.Essential) { $text = "🔧 $text (INSTALL FIRST)" }
-        $text += "`n   $($app.Description)"
-        
-        $checkbox.Text = $text
-        
-        if ($app.Essential -or $app.Recommended) {
-            $checkbox.Checked = $true
-            $checkbox.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
-        }
-        
-        $checkbox.Tag = $app
-        $checkboxes[$appKey] = $checkbox
-        $panel.Controls.Add($checkbox)
-        
-        $yPos += 60
+        $checkbox.Location = New-Object System.Drawing.Point(20, $yPos)
+        $checkbox.Size = New-Object System.Drawing.Size(460, 40)
+        $checkbox.Text = "$category ($($categories[$category].Count) apps)"
+        $checkbox.Checked = $true
+        $checkboxes[$category] = $checkbox
+        $form.Controls.Add($checkbox)
+        $yPos += 50
     }
     
-    # Buttons
-    $installBtn = New-Object System.Windows.Forms.Button
-    $installBtn.Location = New-Object System.Drawing.Point(480, 530)
-    $installBtn.Size = New-Object System.Drawing.Size(100, 30)
-    $installBtn.Text = "Install"
-    $installBtn.DialogResult = [System.Windows.Forms.DialogResult]::OK
-    $form.Controls.Add($installBtn)
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Location = New-Object System.Drawing.Point(300, 320)
+    $okButton.Size = New-Object System.Drawing.Size(80, 30)
+    $okButton.Text = "Remove"
+    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $form.Controls.Add($okButton)
     
-    $cancelBtn = New-Object System.Windows.Forms.Button
-    $cancelBtn.Location = New-Object System.Drawing.Point(590, 530)
-    $cancelBtn.Size = New-Object System.Drawing.Size(80, 30)
-    $cancelBtn.Text = "Skip"
-    $cancelBtn.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-    $form.Controls.Add($cancelBtn)
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Location = New-Object System.Drawing.Point(390, 320)
+    $cancelButton.Size = New-Object System.Drawing.Size(80, 30)
+    $cancelButton.Text = "Cancel"
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $form.Controls.Add($cancelButton)
     
     $result = $form.ShowDialog()
     
     if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
         $selected = @()
-        foreach ($key in $checkboxes.Keys) {
-            if ($checkboxes[$key].Checked) {
-                $selected += @{
-                    Key = $key
-                    App = $checkboxes[$key].Tag
-                }
+        foreach ($cat in $checkboxes.Keys) {
+            if ($checkboxes[$cat].Checked) {
+                $selected += $cat
             }
         }
         return $selected
@@ -194,151 +230,275 @@ function Show-AppInstallerWizard {
     return $null
 }
 
-function Install-AlternativeApps {
+# Remove bloatware packages
+function Remove-Bloat {
+    param([array]$Categories)
+    
+    $allCategories = Get-DebloatCategories
+    $packagesToRemove = @()
+    
+    foreach ($category in $Categories) {
+        if ($allCategories.ContainsKey($category)) {
+            $packagesToRemove += $allCategories[$category]
+        }
+    }
+    
+    $packagesToRemove = $packagesToRemove | Select-Object -Unique
+    
+    Write-ColorLog "Removing $($packagesToRemove.Count) bloatware packages..." -Level INFO
+    
+    $removed = 0
+    $failed = 0
+    
+    foreach ($package in $packagesToRemove) {
+        Write-Host "  Removing: $package..." -NoNewline
+        
+        $result = & $Script:AdbPath shell pm uninstall --user 0 $package 2>&1
+        
+        if ($result -match "Success" -or $LASTEXITCODE -eq 0) {
+            Write-Host " SUCCESS" -ForegroundColor Green
+            $removed++
+        }
+        else {
+            $disableResult = & $Script:AdbPath shell pm disable-user --user 0 $package 2>&1
+            if ($disableResult -match "disabled") {
+                Write-Host " DISABLED" -ForegroundColor Green
+                $removed++
+            }
+            else {
+                Write-Host " FAILED" -ForegroundColor Red
+                $failed++
+            }
+        }
+    }
+    
+    Write-ColorLog "Debloat complete! Removed: $removed, Failed: $failed" -Level SUCCESS
+}
+
+# Get alternative apps list
+function Get-AlternativeApps {
+    return @(
+        @{Name="F-Droid"; URL="https://f-droid.org/F-Droid.apk"; Essential=$true; Description="Open-source app store"}
+        @{Name="Aurora Store"; FDroid="com.aurora.store"; Recommended=$true; Description="Anonymous Google Play client"}
+        
+        # Messaging & Communication
+        @{Name="Signal"; URL="https://signal.org/android/apk/"; Recommended=$true; Description="Encrypted messaging (replaces Google Messages)"}
+        @{Name="QKSMS"; FDroid="com.moez.QKSMS"; Recommended=$true; Description="Beautiful SMS app (replaces Google Messages)"}
+        @{Name="Simple SMS Messenger"; FDroid="com.simplemobiletools.smsmessenger"; Description="Lightweight SMS app"}
+        
+        # Phone & Contacts
+        @{Name="Simple Dialer"; FDroid="com.simplemobiletools.dialer"; Recommended=$true; Description="Replaces Google Phone"}
+        @{Name="Simple Contacts"; FDroid="com.simplemobiletools.contacts.pro"; Recommended=$true; Description="Replaces Google Contacts"}
+        
+        # Keyboard (T9 for flip phone!)
+        @{Name="Traditional T9"; FDroid="io.github.sspanak.tt9"; Recommended=$true; Description="Perfect T9 keyboard for flip phone"}
+        @{Name="Simple Keyboard"; FDroid="rkr.simplekeyboard.inputmethod"; Description="Lightweight keyboard"}
+        
+        # Media & Gallery
+        @{Name="Simple Gallery"; FDroid="com.simplemobiletools.gallery.pro"; Recommended=$true; Description="Replaces Google Photos"}
+        @{Name="NewPipe"; FDroid="org.schabi.newpipe"; Recommended=$true; Description="YouTube without Google (no ads!)"}
+        @{Name="VLC"; FDroid="org.videolan.vlc"; Description="Media player"}
+        
+        # Files & Productivity
+        @{Name="Simple File Manager"; FDroid="com.simplemobiletools.filemanager.pro"; Recommended=$true; Description="Replaces Google Files"}
+        @{Name="Markor"; FDroid="net.gsantner.markor"; Description="Notes app (replaces Google Keep)"}
+        @{Name="Notesnook"; URL="https://notesnook.com/"; Description="Encrypted notes"}
+        
+        # Email
+        @{Name="K-9 Mail"; FDroid="com.fsck.k9"; Recommended=$true; Description="Replaces Gmail, works with Proton Bridge"}
+        @{Name="FairEmail"; FDroid="eu.faircode.email"; Description="Privacy-focused email"}
+        
+        # Browser
+        @{Name="Fennec F-Droid"; FDroid="org.mozilla.fennec_fdroid"; Recommended=$true; Description="Firefox without Google (replaces Chrome)"}
+        @{Name="Bromite"; URL="https://www.bromite.org/"; Description="Privacy Chromium"}
+        
+        # Maps & Navigation
+        @{Name="Organic Maps"; FDroid="app.organicmaps"; Recommended=$true; Description="Offline maps"}
+        @{Name="OsmAnd"; FDroid="net.osmand.plus"; Description="Advanced offline maps"}
+        
+        # Security & Privacy
+        @{Name="Aegis Authenticator"; FDroid="com.beemdevelopment.aegis"; Recommended=$true; Description="2FA app"}
+        @{Name="Bitwarden"; URL="https://vault.bitwarden.com/download/?app=mobile&platform=android"; Description="Password manager"}
+        
+        # Calendar
+        @{Name="Simple Calendar"; FDroid="com.simplemobiletools.calendar.pro"; Recommended=$true; Description="Replaces Google Calendar"}
+        @{Name="Etar"; FDroid="ws.xsoh.etar"; Description="Material calendar"}
+        
+        # Camera
+        @{Name="Open Camera"; FDroid="net.sourceforge.opencamera"; Description="Advanced camera app"}
+    )
+}
+
+# Show app selection dialog
+function Show-AppDialog {
+    $apps = Get-AlternativeApps
+    
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Install Alternative Apps"
+    $form.Size = New-Object System.Drawing.Size(700, 600)
+    $form.StartPosition = "CenterScreen"
+    
+    $label = New-Object System.Windows.Forms.Label
+    $label.Location = New-Object System.Drawing.Point(10, 10)
+    $label.Size = New-Object System.Drawing.Size(680, 40)
+    $label.Text = "Select apps to install (F-Droid will be installed first):`nRecommended apps replace Google defaults"
+    $form.Controls.Add($label)
+    
+    $panel = New-Object System.Windows.Forms.Panel
+    $panel.Location = New-Object System.Drawing.Point(10, 60)
+    $panel.Size = New-Object System.Drawing.Size(660, 470)
+    $panel.AutoScroll = $true
+    $form.Controls.Add($panel)
+    
+    $checkboxes = @()
+    $yPos = 5
+    
+    foreach ($app in $apps) {
+        $checkbox = New-Object System.Windows.Forms.CheckBox
+        $checkbox.Location = New-Object System.Drawing.Point(10, $yPos)
+        $checkbox.Size = New-Object System.Drawing.Size(630, 45)
+        
+        $text = $app.Name
+        if ($app.Recommended) { $text = "[RECOMMENDED] $text" }
+        if ($app.Essential) { $text = "[ESSENTIAL] $text" }
+        if ($app.Description) { $text += "`n   $($app.Description)" }
+        
+        $checkbox.Text = $text
+        $checkbox.Checked = ($app.Essential -or $app.Recommended)
+        $checkbox.Tag = $app
+        
+        if ($app.Essential) {
+            $checkbox.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $checkboxes += $checkbox
+        $panel.Controls.Add($checkbox)
+        $yPos += 50
+    }
+    
+    # Select All / Deselect All buttons
+    $selectAllBtn = New-Object System.Windows.Forms.Button
+    $selectAllBtn.Location = New-Object System.Drawing.Point(300, 540)
+    $selectAllBtn.Size = New-Object System.Drawing.Size(90, 30)
+    $selectAllBtn.Text = "Select All"
+    $selectAllBtn.Add_Click({
+        foreach ($cb in $checkboxes) { $cb.Checked = $true }
+    })
+    $form.Controls.Add($selectAllBtn)
+    
+    $deselectAllBtn = New-Object System.Windows.Forms.Button
+    $deselectAllBtn.Location = New-Object System.Drawing.Point(400, 540)
+    $deselectAllBtn.Size = New-Object System.Drawing.Size(90, 30)
+    $deselectAllBtn.Text = "Deselect All"
+    $deselectAllBtn.Add_Click({
+        foreach ($cb in $checkboxes) { 
+            if (-not $cb.Tag.Essential) { $cb.Checked = $false }
+        }
+    })
+    $form.Controls.Add($deselectAllBtn)
+    
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Location = New-Object System.Drawing.Point(500, 540)
+    $okButton.Size = New-Object System.Drawing.Size(80, 30)
+    $okButton.Text = "Install"
+    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $form.Controls.Add($okButton)
+    
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Location = New-Object System.Drawing.Point(590, 540)
+    $cancelButton.Size = New-Object System.Drawing.Size(80, 30)
+    $cancelButton.Text = "Skip"
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $form.Controls.Add($cancelButton)
+    
+    $result = $form.ShowDialog()
+    
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        return ($checkboxes | Where-Object { $_.Checked } | ForEach-Object { $_.Tag })
+    }
+    
+    return $null
+}
+
+# Install apps
+function Install-Apps {
     param([array]$SelectedApps)
     
     if (-not $SelectedApps -or $SelectedApps.Count -eq 0) {
-        Write-Log "No apps selected for installation" -Level INFO
-        return $true
+        return
     }
     
-    # Step 1: Install F-Droid first if selected
-    $fdroidApp = $SelectedApps | Where-Object { $_.Key -eq "F-Droid" }
-    if ($fdroidApp) {
-        Write-Log "Installing F-Droid..." -Level INFO
-        
-        $fdroidPath = Join-Path $env:TEMP "F-Droid.apk"
-        
+    # Install F-Droid first
+    $fdroid = $SelectedApps | Where-Object { $_.Name -eq "F-Droid" }
+    if ($fdroid) {
+        Write-ColorLog "Installing F-Droid..." -Level INFO
         try {
-            Invoke-WebRequest -Uri $fdroidApp.App.URL -OutFile $fdroidPath -UseBasicParsing
-            $result = Invoke-ADBCommand -Command "install -r `"$fdroidPath`""
-            
-            if ($result.Success) {
-                Write-Log "F-Droid installed successfully" -Level SUCCESS
-            }
-            else {
-                Write-Log "F-Droid installation failed" -Level ERROR
-            }
+            $apkPath = "$env:TEMP\F-Droid.apk"
+            Invoke-WebRequest -Uri $fdroid.URL -OutFile $apkPath -UseBasicParsing
+            & $Script:AdbPath install -r $apkPath 2>&1 | Out-Null
+            Write-ColorLog "F-Droid installed!" -Level SUCCESS
+            Start-Sleep -Seconds 3
         }
         catch {
-            Write-Log "Failed to download F-Droid: $_" -Level ERROR
-        }
-        
-        # Wait for F-Droid to initialize
-        Start-Sleep -Seconds 5
-    }
-    
-    # Step 2: Install apps with direct URLs
-    $directApps = $SelectedApps | Where-Object { $_.App.URL -and $_.Key -ne "F-Droid" }
-    foreach ($item in $directApps) {
-        Write-Log "Installing $($item.App.Name)..." -Level INFO
-        
-        $apkPath = Join-Path $env:TEMP "$($item.Key).apk"
-        
-        try {
-            Invoke-WebRequest -Uri $item.App.URL -OutFile $apkPath -UseBasicParsing
-            $result = Invoke-ADBCommand -Command "install -r `"$apkPath`""
-            
-            if ($result.Success) {
-                Write-Log "$($item.App.Name) installed" -Level SUCCESS
-            }
-            else {
-                Write-Log "$($item.App.Name) installation failed" -Level WARNING
-            }
-        }
-        catch {
-            Write-Log "Failed to download $($item.App.Name): $_" -Level ERROR
+            Write-ColorLog "Failed to install F-Droid: $_" -Level ERROR
         }
     }
     
-    # Step 3: Show instructions for F-Droid apps
-    $fdroidApps = $SelectedApps | Where-Object { $_.App.FDroid }
-    if ($fdroidApps.Count -gt 0) {
-        $fdroidList = $fdroidApps | ForEach-Object { "  • $($_.App.Name)" }
+    # Show F-Droid app list
+    $fdroidApps = $SelectedApps | Where-Object { $_.FDroid }
+    if ($fdroidApps) {
+        $appList = ($fdroidApps | ForEach-Object { "  - $($_.Name)" }) -join "`n"
         
-        Show-UserPrompt -Title "Install from F-Droid" -Message @"
-The following apps need to be installed from F-Droid:
-
-$($fdroidList -join "`n")
-
-MANUAL STEPS:
-1. Open F-Droid app on your phone
-2. Update repositories (wait ~1 minute)
-3. Search for each app by name
-4. Install them
-
-These apps are open-source and privacy-focused alternatives!
-
-Click OK when done (or to continue anyway).
-"@ | Out-Null
+        [System.Windows.Forms.MessageBox]::Show(
+            "Install these apps from F-Droid:`n`n$appList`n`nSteps:`n1. Open F-Droid`n2. Update repositories`n3. Search and install each app",
+            "Manual F-Droid Installation",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        ) | Out-Null
     }
     
-    Write-Log "App installation complete!" -Level SUCCESS
-    return $true
+    Write-ColorLog "App installation complete!" -Level SUCCESS
 }
 
-function Start-EnhancedDebloat {
-    Write-Log "=== Starting Enhanced Debloat Wizard ===" -Level INFO
+# Main workflow
+function Start-Debloat {
+    Write-ColorLog "=== CAT S22 Enhanced Debloat Tool ===" -Level INFO
+    
+    # Check ADB
+    if (-not (Test-ADB)) {
+        [System.Windows.Forms.MessageBox]::Show(
+            "No rooted device detected via ADB.`n`nPlease:`n1. Connect your rooted CAT S22`n2. Enable USB debugging`n3. Authorize this computer",
+            "Device Not Connected",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        ) | Out-Null
+        return
+    }
     
     # Step 1: Debloat
-    $doDeb loat = Show-UserPrompt -Title "Debloat Device" -Message @"
-Would you like to remove bloatware from your rooted device?
-
-This includes:
-• T-Mobile/Sprint apps
-• Unnecessary Google apps (keeps Play Store/Services)
-• Facebook services
-• Other bloat
-
-Click OK to start debloat wizard
-Click Cancel to skip
-"@
-    
-    if ($doDebloat) {
-        $categories = Show-CategorySelection
+    if (Show-Prompt -Title "Remove Bloatware" -Message "Remove T-Mobile/Google bloatware?`n`nThis will:`n- Remove carrier apps`n- Remove unnecessary Google apps`n- Keep Play Store & Services") {
+        $categories = Show-CategoryDialog
         if ($categories) {
-            Remove-BloatwarePackages -Categories $categories
+            Remove-Bloat -Categories $categories
         }
     }
     
-    # Step 2: Install Alternative Apps
-    $doApps = Show-UserPrompt -Title "Install Alternative Apps" -Message @"
-Would you like to install privacy-focused alternative apps?
-
-Available:
-• F-Droid (open-source app store)
-• Traditional T9 keyboard
-• Simple SMS/Contacts/Dialer
-• NewPipe (YouTube alternative)
-• Proton apps support
-• And more!
-
-Click OK to select apps
-Click Cancel to skip
-"@
-    
-    if ($doApps) {
-        $selectedApps = Show-AppInstallerWizard
-        if ($selectedApps) {
-            Install-AlternativeApps -SelectedApps $selectedApps
+    # Step 2: Install Apps
+    if (Show-Prompt -Title "Install Alternative Apps" -Message "Install privacy-focused apps?`n`nIncludes:`n- F-Droid app store`n- Traditional T9 keyboard`n- Simple SMS/Contacts`n- NewPipe (YouTube)") {
+        $apps = Show-AppDialog
+        if ($apps) {
+            Install-Apps -SelectedApps $apps
         }
     }
     
-    # Step 3: Final optimization
-    Show-UserPrompt -Title "Debloat Complete" -Message @"
-Post-root setup complete!
-
-Recommendations:
-1. Reboot device for all changes to take effect
-2. Configure your new apps (F-Droid, T9 keyboard, etc.)
-3. Set default apps (Settings → Apps → Default apps)
-4. Disable Google backup if desired
-5. Install Proton apps if using Proton services
-
-Reboot now?
-"@ | Out-Null
+    # Done
+    $reboot = Show-Prompt -Title "Complete!" -Message "Debloat complete!`n`nRecommendations:`n- Reboot device`n- Configure new apps`n- Set default apps`n`nReboot now?"
+    if ($reboot) {
+        & $Script:AdbPath reboot
+    }
     
-    Write-Log "Enhanced debloat complete!" -Level SUCCESS
+    Write-ColorLog "Debloat wizard complete!" -Level SUCCESS
 }
 
-Export-ModuleMember -Function Start-EnhancedDebloat
+# Run the wizard
+Start-Debloat

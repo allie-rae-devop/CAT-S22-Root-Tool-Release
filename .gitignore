@@ -1,4 +1,20 @@
-﻿*.log
+# Logs and temp files
+*.log
 *.tmp
+
+# Working directories
 CAT_S22_Root/
 platform-tools/
+
+# Build output (use releases/ for distribution)
+build/
+
+# Release packages (uploaded to GitHub Releases, not committed)
+releases/
+*.zip
+
+# IDE and editor files
+.vs/
+.vscode/
+*.suo
+*.user
