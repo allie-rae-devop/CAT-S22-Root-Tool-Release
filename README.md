@@ -32,7 +32,7 @@
 
 **One-click GUI tool - no PowerShell setup required!**
 
-[![Download Portable EXE](https://img.shields.io/badge/Download-Portable_EXE_(21MB)-blue?style=for-the-badge&logo=windows)](https://github.com/CatS22Flip/CAT-S22-Root-Tool/releases/latest/download/CAT_S22_Root_Tool_Portable.zip)
+[![Download Portable EXE](https://img.shields.io/badge/Download-Portable_EXE_(21MB)-blue?style=for-the-badge&logo=windows)](https://github.com/allie-rae-devop/CAT-S22-Root-Tool-Release/releases/latest/download/CAT_S22_Root_Tool_Portable.zip)
 
 **Package Contents:**
 | File | Size | Description |
@@ -72,7 +72,7 @@
 
 **Full control - run scripts directly with full transparency**
 
-[![Download Scripts](https://img.shields.io/badge/Download-PowerShell_Scripts_(44MB)-green?style=for-the-badge&logo=powershell)](https://github.com/CatS22Flip/CAT-S22-Root-Tool/releases/latest/download/CAT_S22_Root_Tool_Scripts.zip)
+[![Download Scripts](https://img.shields.io/badge/Download-PowerShell_Scripts_(44MB)-green?style=for-the-badge&logo=powershell)](https://github.com/allie-rae-devop/CAT-S22-Root-Tool-Release/releases/latest/download/CAT_S22_Root_Tool_Scripts.zip)
 
 **Package Contents:**
 | File | Description |
@@ -143,7 +143,7 @@ The GUI wrapper simply:
 Don't trust pre-built executables? Build it yourself:
 ```powershell
 # Clone the repo
-git clone https://github.com/CatS22Flip/CAT-S22-Root-Tool.git
+git clone https://github.com/allie-rae-devop/CAT-S22-Root-Tool-Release.git
 cd CAT-S22-Root-Tool
 
 # Build the executable
