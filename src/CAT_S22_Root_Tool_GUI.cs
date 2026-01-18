@@ -59,7 +59,7 @@ namespace CAT_S22_Root_Tool
         // Constants
         private const string APP_NAME = "CAT S22 Root Tool";
         private const string APP_VERSION = "1.0.0";
-        private const string GITHUB_URL = "https://github.com/user/CAT_S22_Root_Tool";
+        private const string GITHUB_URL = "https://github.com/allie-rae-devop/CAT-S22-Root-Tool-Release";
         private const string PLATFORM_TOOLS_URL = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip";
 
         public MainForm()
