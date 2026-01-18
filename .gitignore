@@ -1,0 +1,4 @@
+﻿*.log
+*.tmp
+CAT_S22_Root/
+platform-tools/
