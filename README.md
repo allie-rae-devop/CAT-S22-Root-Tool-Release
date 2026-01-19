@@ -203,6 +203,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 CAT_S22_Root_Tool/
 ├── CAT_S22_Root_Tool.ps1           # Main rooting tool (PowerShell GUI)
 ├── CAT_S22_Enhanced_Debloat.ps1    # Debloat & app installer
+├── Analyze-AndroidPackages.ps1     # Package analyzer tool (NEW)
 ├── boot_images/
 │   └── boot_v30.img                # Pre-extracted boot image
 ├── Magisk-v25.2.apk                # Magisk installer
@@ -223,8 +224,63 @@ CAT_S22_Root_Tool/
 
 | Root Tool | Debloat Tool |
 |-----------|--------------|
-| ![Root GUI](assets/Screenshot-1.png) | ![Debloat GUI](assets/Screenshot-2.png) |
-| ![Progress](assets/Screenshot-3.png) | ![Complete](assets/Screenshot-4.png) |
+| ![Root GUI](assets/Screenshot-1.png) | ![ADB-Analyzer GUI](assets/Screenshot-2.png) |
+| ![Debloater](assets/Screenshot-3.png) | ![Debloater](assets/Screenshot-4.png) | ![Debloater](assets/Screenshot-5.png) |
+
+---
+
+## Android Package Analyzer (New!)
+
+A comprehensive tool for analyzing and managing all packages on your rooted device.
+
+![Package Analyzer](assets/Screenshot-2.png)
+
+### Features
+
+- **Complete Package Analysis** - Lists ALL installed packages (system + user)
+- **Smart Categorization** - Groups by vendor: Google, T-Mobile, Samsung, AOSP, etc.
+- **Safety Ratings** - Color-coded recommendations:
+  - **ESSENTIAL** (Red) - Never remove (Play Services, SystemUI, etc.)
+  - **KEEP** (Orange) - Important functionality
+  - **REVIEW** (Yellow) - Research before removing
+  - **SAFE TO REMOVE** (Green) - Known bloatware
+- **Telemetry Detection** - Identifies all data collection packages
+- **One-Click Disable** - Remove all telemetry with one button
+- **Running Services** - View and analyze background processes
+- **Export Reports** - HTML, CSV, and JSON backup formats
+
+### How to Use
+
+```powershell
+# Set execution policy (if not already done)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+# Launch the analyzer with GUI
+.\Analyze-AndroidPackages.ps1
+
+# Console mode (no GUI)
+.\Analyze-AndroidPackages.ps1 -NoGui
+
+# Export reports only
+.\Analyze-AndroidPackages.ps1 -ExportOnly
+```
+
+### GUI Tabs
+
+1. **All Packages** - Browse, filter, search, and select packages for removal
+2. **Telemetry & Analytics** - Dedicated view of data collection packages (highlighted in red)
+3. **Running Services** - Shows active background services with recommendations
+4. **Export Reports** - Generate HTML reports, CSV exports, and backup files
+
+### Safety Features
+
+- Prevents removal of ESSENTIAL packages
+- Confirms before any removal action
+- Creates backup of package list
+- Logs all removals with restore commands
+- Easy restore if something goes wrong
+
+> **Future Integration:** The Package Analyzer will be integrated into the Portable EXE launcher in a future update. It will appear as an "Analyze Packages" button alongside "Root Device" and "Debloat Device". For now, run the PowerShell script directly. The tool will also be included in both the Portable EXE and Scripts release packages.
 
 ---
 
