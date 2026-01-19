@@ -5,6 +5,7 @@
 **One-click root tool for CAT S22 Flip (T-Mobile) firmware v30**
 
 ![CAT S22 Root Tool](assets/Screenshot-1.png)
+![Package Analyzer](assets/Screenshot-2.png)
 
 ## Features
 
@@ -224,8 +225,8 @@ CAT_S22_Root_Tool/
 
 | Root Tool | Debloat Tool |
 |-----------|--------------|
-| ![Root GUI](assets/Screenshot-1.png) | ![ADB-Analyzer GUI](assets/Screenshot-2.png) |
-| ![Debloater](assets/Screenshot-3.png) | ![Debloater](assets/Screenshot-4.png) | ![Debloater](assets/Screenshot-5.png) |
+| ![Root GUI](assets/Screenshot-1.png)  | ![Debloater](assets/Screenshot-3.png) |
+| ![Debloater](assets/Screenshot-4.png) | ![Debloater](assets/Screenshot-5.png) |
 
 ---
 
