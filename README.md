@@ -236,6 +236,8 @@ A comprehensive tool for analyzing and managing all packages on your rooted devi
 
 ![Package Analyzer](assets/Screenshot-2.png)
 
+[![Download Package Analyzer](https://img.shields.io/badge/Download-Analyze-Android-Packages_(52.9KB)-green?style=for-the-badge&logo=powershell)](https://github.com/allie-rae-devop/CAT-S22-Root-Tool-Release/releases/download/v4.0.0/Analyze-AndroidPackages.ps1)
+
 ### Features
 
 - **Complete Package Analysis** - Lists ALL installed packages (system + user)
