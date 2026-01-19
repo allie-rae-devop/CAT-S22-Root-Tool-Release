@@ -1,9 +1,12 @@
 # CAT S22 Flip Root Tool v4.0
 
+> **Origin Story:** This project was born on a single Sunday afternoon out of pure necessity. I wanted to root my CAT S22 but didn't want the headache of manual command-line execution. I am not a master coder—I just wanted a tool that worked. By guiding Claude (Anthropic AI) through the architecture and debugging process, we went from zero to a v4.0 release in one day. This tool is proof that you don't need to be a C# expert to build useful software; you just need the right idea and the right "vibe coding" partner.
+
 > **Development Note:** This tool was developed with assistance from Claude (Anthropic AI) and extensively tested on real CAT S22 hardware. The code has been refined through iterative development and real-world debugging to ensure reliability.
 
 **One-click root tool for CAT S22 Flip (T-Mobile) firmware v30**
 
+![CAT S22](assets/s22.jpg)
 ![CAT S22 Root Tool](assets/Screenshot-1.png)
 ![Package Analyzer](assets/Screenshot-2.png)
 
